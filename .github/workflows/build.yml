@@ -13,55 +13,59 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # 1. كود المشروع
-      - name: Checkout
+      # ── 1. Checkout ───────────────────────────────────────────────────────
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Java — JAVA_HOME بيتضبط تلقائي
+      # ── 2. Java 17 (Temurin) — sets JAVA_HOME automatically ──────────────
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # 3. Python 3.10 — الأكثر استقراراً مع Buildozer + Cython 0.29.x
+      # ── 3. Python 3.10 — most stable with Buildozer + Cython 0.29.x ──────
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 4. قبول SDK licenses — لازم يكون قبل أي sdkmanager install
+      # ── 4. Accept Android SDK licenses FIRST (required before sdkmanager) ─
       - name: Accept Android SDK licenses
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      # 5. تثبيت NDK 25b وأدوات البناء المطلوبة
-      - name: Install NDK 25b and build tools
+      # ── 5. Install NDK 25b + required SDK components ──────────────────────
+      - name: Install NDK 25b and SDK components
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
             "ndk;25.1.8937393" \
-            "build-tools;33.0.2" \
-            "platforms;android-33"
+            "build-tools;34.0.0" \
+            "platforms;android-34" \
+            "platform-tools"
 
-      # 6. حقن مسارات SDK/NDK داخل قسم [app] في buildozer.spec
-      #    (sed بيضيف السطرين قبل [buildozer] عشان يكونوا تحت [app] صح)
+      # ── 6. Inject SDK/NDK paths into [app] section of buildozer.spec ──────
+      #       sed inserts the two lines BEFORE [buildozer] so they land
+      #       inside [app] — appending would put them in the wrong section.
       - name: Inject SDK/NDK paths into buildozer.spec
         run: |
           NDK_PATH="$ANDROID_HOME/ndk/25.1.8937393"
           sed -i "s|\[buildozer\]|android.sdk_path = $ANDROID_HOME\nandroid.ndk_path = $NDK_PATH\n\n[buildozer]|" buildozer.spec
-          echo "=== buildozer.spec final ==="
+          echo "======= buildozer.spec after injection ======="
           cat buildozer.spec
+          echo "=============================================="
 
-      # 7. إصلاح بروتوكول git:// — يمنع فشل clone الـ p4a
+      # ── 7. Fix git:// protocol — prevents p4a clone failures ─────────────
       - name: Fix git protocol
         run: git config --global url."https://".insteadOf git://
 
-      # 8. كل الحزم اللي تحتاجها وصفات p4a
+      # ── 8. System dependencies required by p4a recipes ───────────────────
       - name: Install system dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y \
             git zip unzip wget curl \
+            openjdk-17-jdk \
             autoconf automake libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev \
             libffi-dev libssl-dev libsqlite3-dev \
@@ -71,28 +75,28 @@ jobs:
             cmake ninja-build patch \
             lib32stdc++6 lib32z1
 
-      # 9. Buildozer + Cython
+      # ── 9. Buildozer 1.5.0 + Cython 0.29.37 (most stable combo) ─────────
       - name: Install Buildozer and Cython
         run: |
           pip install --upgrade pip wheel
           pip install "buildozer==1.5.0" "cython==0.29.37"
 
-      # 10. Cache عشان البناء الجاي يكون أسرع
+      # ── 10. Cache Buildozer — speeds up repeated builds significantly ─────
       - name: Cache Buildozer directories
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer
             .buildozer
-          key: buildozer-${{ runner.os }}-v6-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-${{ runner.os }}-v7-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
-            buildozer-${{ runner.os }}-v6-
+            buildozer-${{ runner.os }}-v7-
 
-      # 11. البناء
+      # ── 11. Build the APK ─────────────────────────────────────────────────
       - name: Build APK
         run: buildozer -v android debug
 
-      # 12. رفع الـ APK كـ artifact
+      # ── 12. Upload APK as downloadable artifact ───────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
