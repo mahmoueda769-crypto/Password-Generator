@@ -1,6 +1,6 @@
 [app]
 
-title = Password Generator
+title = Development el dood
 package.name = passwordgenerator
 package.domain = org.example
 
@@ -9,22 +9,25 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 1.0.0
 
-# Minimal requirements — python3 version is managed by the NDK toolchain
+# Minimal — python3 version is managed internally by the NDK toolchain
 requirements = python3,kivy==2.3.0
 
 orientation = portrait
 fullscreen = 0
 
 android.permissions = INTERNET
+
+# Target API and NDK
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
 android.ndk_api = 21
+
+# 32-bit only — faster CI build, lower memory usage, wider device compatibility
+android.archs = armeabi-v7a
+# android.archs = arm64-v8a  ← disabled
+
 android.private_storage = True
-
-# Single arch keeps CI fast and avoids out-of-memory on GitHub Actions
-android.archs = arm64-v8a
-
 android.allow_backup = True
 
 [buildozer]

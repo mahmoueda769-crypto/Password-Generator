@@ -16,50 +16,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Dedicated Java action — sets JAVA_HOME automatically
+      # Java — sets JAVA_HOME automatically
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # Python 3.10 is the most stable version for Buildozer + Cython 0.29.x
+      # Python 3.10 — most stable with Buildozer + Cython 0.29.x
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # Fix git:// protocol — prevents python-for-android clone failures
-      - name: Fix git protocol
+      # Must run before any build step — prevents p4a clone failures
+      - name: Fix git:// protocol
         run: git config --global url."https://".insteadOf git://
 
       - name: Install system dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y \
-            git zip unzip wget \
+            git zip unzip wget curl \
+            openjdk-17-jdk \
             autoconf automake libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev \
             libffi-dev libssl-dev libsqlite3-dev \
             libbz2-dev libreadline-dev libgdbm-dev \
             liblzma-dev python3-dev \
             build-essential ccache libltdl-dev \
-            cmake ninja-build patch
+            cmake ninja-build patch \
+            lib32stdc++6 lib32z1
 
       - name: Install Buildozer and Cython
         run: |
           pip install --upgrade pip wheel
           pip install "buildozer==1.5.0" "cython==0.29.37"
 
-      # Cache both the global downloads and the local build artefacts
       - name: Cache Buildozer directories
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer
             .buildozer
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-${{ runner.os }}-armeabi-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
+            buildozer-${{ runner.os }}-armeabi-
             buildozer-${{ runner.os }}-
 
       - name: Build APK
