@@ -9,23 +9,21 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 1.0.0
 
-# Minimal — python3 version is managed internally by the NDK toolchain
+# SDK/NDK paths are injected via ANDROIDSDK/ANDROIDNDK env vars in CI
+# python3 version is managed by the NDK toolchain — do not pin it
 requirements = python3,kivy==2.3.0
 
 orientation = portrait
 fullscreen = 0
 
 android.permissions = INTERNET
-
-# Target API and NDK
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
 android.ndk_api = 21
 
-# 32-bit only — faster CI build, lower memory usage, wider device compatibility
+# 32-bit — faster build, wider device support, lower memory usage
 android.archs = armeabi-v7a
-# android.archs = arm64-v8a  ← disabled
 
 android.private_storage = True
 android.allow_backup = True
