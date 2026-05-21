@@ -20,12 +20,12 @@ if platform not in ('android', 'ios'):
 
 class PasswordGeneratorApp(App):
     def build(self):
-        self.title = "Password Generator"
+        self.title = "Development el dood"
 
         layout = BoxLayout(orientation='vertical', padding=20, spacing=12)
 
         layout.add_widget(Label(
-            text="Password Generator",
+            text="Development el dood",
             font_size='22sp',
             bold=True,
             size_hint_y=None,
