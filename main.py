@@ -1,5 +1,6 @@
 import random
 import string
+
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -8,117 +9,77 @@ from kivy.uix.button import Button
 from kivy.uix.checkbox import CheckBox
 from kivy.core.window import Window
 from kivy.core.clipboard import Clipboard
+from kivy.utils import platform
 
-Window.size = (360, 640)
+# Only resize window on desktop — ignored on Android/iOS
+if platform not in ('android', 'ios'):
+    Window.size = (360, 640)
 
 
 class PasswordGeneratorApp(App):
     def build(self):
-        self.title = "مولد كلمات المرور"
+        self.title = "Password Generator"
 
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=12)
 
-        title_label = Label(
+        layout.add_widget(Label(
             text="Password Generator",
-            font_size='24sp',
+            font_size='22sp',
             bold=True,
             size_hint_y=None,
-            height=50
-        )
-        layout.add_widget(title_label)
+            height=48
+        ))
 
-        input_layout = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=50,
-            spacing=10
-        )
-        self.len_label = Label(
-            text="طول الكلمة:",
-            font_size='16sp',
-            size_hint_x=0.4
-        )
+        # Length row
+        length_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=48, spacing=10)
+        length_row.add_widget(Label(text="Length:", font_size='16sp', size_hint_x=0.4))
         self.length_input = TextInput(
-            text="12",
+            text="16",
             multiline=False,
             input_filter='int',
             font_size='18sp',
             size_hint_x=0.6
         )
-        input_layout.add_widget(self.len_label)
-        input_layout.add_widget(self.length_input)
-        layout.add_widget(input_layout)
+        length_row.add_widget(self.length_input)
+        layout.add_widget(length_row)
 
-        self.uppercase_box = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=40
-        )
-        self.uppercase_chk = CheckBox(active=True, size_hint_x=0.2)
-        uppercase_lbl = Label(text="أحرف كبيرة (A-Z)", size_hint_x=0.8)
-        self.uppercase_box.add_widget(self.uppercase_chk)
-        self.uppercase_box.add_widget(uppercase_lbl)
-        layout.add_widget(self.uppercase_box)
+        # Checkboxes
+        self.uppercase_chk, uc_row = self._checkbox_row("Uppercase (A–Z)")
+        self.lowercase_chk, lc_row = self._checkbox_row("Lowercase (a–z)")
+        self.numbers_chk,   nb_row = self._checkbox_row("Numbers (0–9)")
+        self.symbols_chk,   sy_row = self._checkbox_row("Symbols (!@#$)")
 
-        self.lowercase_box = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=40
-        )
-        self.lowercase_chk = CheckBox(active=True, size_hint_x=0.2)
-        lowercase_lbl = Label(text="أحرف صغيرة (a-z)", size_hint_x=0.8)
-        self.lowercase_box.add_widget(self.lowercase_chk)
-        self.lowercase_box.add_widget(lowercase_lbl)
-        layout.add_widget(self.lowercase_box)
+        for row in (uc_row, lc_row, nb_row, sy_row):
+            layout.add_widget(row)
 
-        self.numbers_box = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=40
-        )
-        self.numbers_chk = CheckBox(active=True, size_hint_x=0.2)
-        numbers_lbl = Label(text="أرقام (0-9)", size_hint_x=0.8)
-        self.numbers_box.add_widget(self.numbers_chk)
-        self.numbers_box.add_widget(numbers_lbl)
-        layout.add_widget(self.numbers_box)
-
-        self.symbols_box = BoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=40
-        )
-        self.symbols_chk = CheckBox(active=True, size_hint_x=0.2)
-        symbols_lbl = Label(text="رموز خاصة (!@#$)", size_hint_x=0.8)
-        self.symbols_box.add_widget(self.symbols_chk)
-        self.symbols_box.add_widget(symbols_lbl)
-        layout.add_widget(self.symbols_box)
-
+        # Output field
         self.result_input = TextInput(
-            text="اضغط توليد...",
+            text="Tap Generate…",
             readonly=True,
-            font_size='18sp',
+            font_size='16sp',
             halign='center',
             size_hint_y=None,
-            height=60
+            height=56
         )
         layout.add_widget(self.result_input)
 
-        generate_btn = Button(
-            text="توليد كلمة مرور قوية",
-            font_size='20sp',
+        # Buttons
+        gen_btn = Button(
+            text="Generate Password",
+            font_size='18sp',
             background_color=(0.1, 0.6, 0.4, 1),
             size_hint_y=None,
-            height=50
+            height=52
         )
-        generate_btn.bind(on_press=self.generate_password)
-        layout.add_widget(generate_btn)
+        gen_btn.bind(on_press=self.generate_password)
+        layout.add_widget(gen_btn)
 
         copy_btn = Button(
-            text="نسخ كلمة المرور",
-            font_size='18sp',
+            text="Copy to Clipboard",
+            font_size='16sp',
             background_color=(0.2, 0.4, 0.8, 1),
             size_hint_y=None,
-            height=50
+            height=48
         )
         copy_btn.bind(on_press=self.copy_password)
         layout.add_widget(copy_btn)
@@ -128,56 +89,75 @@ class PasswordGeneratorApp(App):
             font_size='14sp',
             size_hint_y=None,
             height=30,
-            color=(0.2, 0.9, 0.5, 1)
+            color=(0.3, 0.9, 0.5, 1)
         )
         layout.add_widget(self.status_label)
 
         return layout
 
-    def generate_password(self, instance):
+    def _checkbox_row(self, label_text):
+        row = BoxLayout(orientation='horizontal', size_hint_y=None, height=40)
+        chk = CheckBox(active=True, size_hint_x=0.15)
+        row.add_widget(chk)
+        row.add_widget(Label(text=label_text, font_size='15sp', size_hint_x=0.85))
+        return chk, row
+
+    def generate_password(self, _instance):
         try:
             length = int(self.length_input.text)
-            if length < 4:
-                self.result_input.text = "قصير جداً! (الأقل 4)"
-                return
         except ValueError:
-            self.result_input.text = "أدخل رقم صحيح!"
+            self.result_input.text = "Enter a valid number!"
             return
 
-        characters = ""
+        if length < 4:
+            self.result_input.text = "Minimum length is 4!"
+            return
+        if length > 256:
+            self.result_input.text = "Maximum length is 256!"
+            return
+
+        pool = ""
         guaranteed = []
 
         if self.uppercase_chk.active:
-            characters += string.ascii_uppercase
+            pool += string.ascii_uppercase
             guaranteed.append(random.choice(string.ascii_uppercase))
         if self.lowercase_chk.active:
-            characters += string.ascii_lowercase
+            pool += string.ascii_lowercase
             guaranteed.append(random.choice(string.ascii_lowercase))
         if self.numbers_chk.active:
-            characters += string.digits
+            pool += string.digits
             guaranteed.append(random.choice(string.digits))
         if self.symbols_chk.active:
-            characters += string.punctuation
+            pool += string.punctuation
             guaranteed.append(random.choice(string.punctuation))
 
-        if not characters:
-            self.result_input.text = "اختر نوع واحد على الأقل!"
+        if not pool:
+            self.result_input.text = "Select at least one type!"
             return
 
-        remaining = [random.choice(characters) for _ in range(length - len(guaranteed))]
+        remaining = [random.choice(pool) for _ in range(length - len(guaranteed))]
         all_chars = guaranteed + remaining
         random.shuffle(all_chars)
 
         self.result_input.text = "".join(all_chars)
         self.status_label.text = ""
 
-    def copy_password(self, instance):
+    def copy_password(self, _instance):
+        PLACEHOLDERS = {
+            "Tap Generate…",
+            "Enter a valid number!",
+            "Minimum length is 4!",
+            "Maximum length is 256!",
+            "Select at least one type!",
+            ""
+        }
         pwd = self.result_input.text
-        if pwd and pwd not in ("اضغط توليد...", "قصير جداً! (الأقل 4)", "أدخل رقم صحيح!", "اختر نوع واحد على الأقل!"):
+        if pwd not in PLACEHOLDERS:
             Clipboard.copy(pwd)
-            self.status_label.text = "تم النسخ!"
+            self.status_label.text = "Copied!"
         else:
-            self.status_label.text = "لا توجد كلمة مرور للنسخ"
+            self.status_label.text = "Generate a password first."
 
 
 if __name__ == '__main__':

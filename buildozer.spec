@@ -9,6 +9,7 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 1.0.0
 
+# Minimal requirements — python3 version is managed by the NDK toolchain
 requirements = python3,kivy==2.3.0
 
 orientation = portrait
@@ -20,7 +21,10 @@ android.minapi = 21
 android.ndk = 25b
 android.ndk_api = 21
 android.private_storage = True
-android.archs = arm64-v8a, armeabi-v7a
+
+# Single arch keeps CI fast and avoids out-of-memory on GitHub Actions
+android.archs = arm64-v8a
+
 android.allow_backup = True
 
 [buildozer]
