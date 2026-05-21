@@ -9,8 +9,7 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 1.0.0
 
-# SDK/NDK paths are injected via ANDROIDSDK/ANDROIDNDK env vars in CI
-# python3 version is managed by the NDK toolchain — do not pin it
+# python3 version managed by NDK toolchain — do not pin
 requirements = python3,kivy==2.3.0
 
 orientation = portrait
@@ -22,11 +21,13 @@ android.minapi = 21
 android.ndk = 25b
 android.ndk_api = 21
 
-# 32-bit — faster build, wider device support, lower memory usage
+# 32-bit only — faster CI, wider device support
 android.archs = armeabi-v7a
 
 android.private_storage = True
 android.allow_backup = True
+
+# android.sdk_path and android.ndk_path are appended by CI at build time
 
 [buildozer]
 
