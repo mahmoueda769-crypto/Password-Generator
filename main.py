@@ -11,7 +11,9 @@ from kivy.core.window import Window
 from kivy.core.clipboard import Clipboard
 from kivy.utils import platform
 
-# Only resize window on desktop — ignored on Android/iOS
+MIN_LENGTH = 6
+MAX_LENGTH = 64
+
 if platform not in ('android', 'ios'):
     Window.size = (360, 640)
 
@@ -32,13 +34,17 @@ class PasswordGeneratorApp(App):
 
         # Length row
         length_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=48, spacing=10)
-        length_row.add_widget(Label(text="Length:", font_size='16sp', size_hint_x=0.4))
+        length_row.add_widget(Label(
+            text=f"Length ({MIN_LENGTH}–{MAX_LENGTH}):",
+            font_size='15sp',
+            size_hint_x=0.5
+        ))
         self.length_input = TextInput(
             text="16",
             multiline=False,
             input_filter='int',
             font_size='18sp',
-            size_hint_x=0.6
+            size_hint_x=0.5
         )
         length_row.add_widget(self.length_input)
         layout.add_widget(length_row)
@@ -63,6 +69,16 @@ class PasswordGeneratorApp(App):
         )
         layout.add_widget(self.result_input)
 
+        # Validation error label
+        self.error_label = Label(
+            text="",
+            font_size='13sp',
+            color=(1, 0.3, 0.3, 1),
+            size_hint_y=None,
+            height=28
+        )
+        layout.add_widget(self.error_label)
+
         # Buttons
         gen_btn = Button(
             text="Generate Password",
@@ -86,10 +102,10 @@ class PasswordGeneratorApp(App):
 
         self.status_label = Label(
             text="",
-            font_size='14sp',
+            font_size='13sp',
+            color=(0.3, 0.9, 0.5, 1),
             size_hint_y=None,
-            height=30,
-            color=(0.3, 0.9, 0.5, 1)
+            height=28
         )
         layout.add_widget(self.status_label)
 
@@ -102,18 +118,45 @@ class PasswordGeneratorApp(App):
         row.add_widget(Label(text=label_text, font_size='15sp', size_hint_x=0.85))
         return chk, row
 
-    def generate_password(self, _instance):
-        try:
-            length = int(self.length_input.text)
-        except ValueError:
-            self.result_input.text = "Enter a valid number!"
-            return
+    def _validate_length(self):
+        """
+        Validates the length input.
+        Returns the integer length on success, or None on failure.
+        Sets self.error_label with a descriptive message on failure.
+        """
+        raw = self.length_input.text.strip()
 
-        if length < 4:
-            self.result_input.text = "Minimum length is 4!"
-            return
-        if length > 256:
-            self.result_input.text = "Maximum length is 256!"
+        if not raw:
+            self.error_label.text = "⚠ Please enter a password length."
+            return None
+
+        if not raw.isdigit():
+            self.error_label.text = "⚠ Length must be a whole number."
+            return None
+
+        length = int(raw)
+
+        if length < MIN_LENGTH:
+            self.error_label.text = (
+                f"⚠ Length {length} is too short — minimum is {MIN_LENGTH}."
+            )
+            return None
+
+        if length > MAX_LENGTH:
+            self.error_label.text = (
+                f"⚠ Length {length} is too long — maximum is {MAX_LENGTH}."
+            )
+            return None
+
+        self.error_label.text = ""
+        return length
+
+    def generate_password(self, _instance):
+        self.status_label.text = ""
+
+        length = self._validate_length()
+        if length is None:
+            self.result_input.text = "Fix the error above and try again."
             return
 
         pool = ""
@@ -133,7 +176,8 @@ class PasswordGeneratorApp(App):
             guaranteed.append(random.choice(string.punctuation))
 
         if not pool:
-            self.result_input.text = "Select at least one type!"
+            self.error_label.text = "⚠ Select at least one character type."
+            self.result_input.text = "Fix the error above and try again."
             return
 
         remaining = [random.choice(pool) for _ in range(length - len(guaranteed))]
@@ -141,21 +185,18 @@ class PasswordGeneratorApp(App):
         random.shuffle(all_chars)
 
         self.result_input.text = "".join(all_chars)
-        self.status_label.text = ""
 
     def copy_password(self, _instance):
         PLACEHOLDERS = {
             "Tap Generate…",
-            "Enter a valid number!",
-            "Minimum length is 4!",
-            "Maximum length is 256!",
-            "Select at least one type!",
+            "Fix the error above and try again.",
             ""
         }
         pwd = self.result_input.text
         if pwd not in PLACEHOLDERS:
             Clipboard.copy(pwd)
-            self.status_label.text = "Copied!"
+            self.status_label.text = "✓ Copied to clipboard!"
+            self.error_label.text = ""
         else:
             self.status_label.text = "Generate a password first."
 
